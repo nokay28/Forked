@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forked - Restaurant Deals & Surveys</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Icon Components (simplified versions)
+        const Icon = ({ d, className = "w-6 h-6" }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={d} />
+            </svg>
+        );
+
+        const Utensils = ({ className }) => <Icon className={className} d="M3 2l2.01 18.23L12 17l6.99 3.23L21 2l-9 7.5L3 2z M12 5v12" />;
+        const Users = ({ className }) => <Icon className={className} d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />;
+        const ChevronRight = ({ className }) => <Icon className={className} d="M9 18l6-6-6-6" />;
+        const Award = ({ className }) => <Icon className={className} d="M12 15a6 6 0 100-12 6 6 0 000 12z M8.21 13.89L7 23l5-3 5 3-1.21-9.12" />;
+        const Star = ({ className }) => <Icon className={className} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />;
+        const MapPin = ({ className }) => <Icon className={className} d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 13a3 3 0 100-6 3 3 0 000 6z" />;
+        const Clock = ({ className }) => <Icon className={className} d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 6v6l4 2" />;
+        const Tag = ({ className }) => <Icon className={className} d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z M7 7h.01" />;
+        const ClipboardList = ({ className }) => <Icon className={className} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />;
+        const MessageSquare = ({ className }) => <Icon className={className} d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />;
+        const DollarSign = ({ className }) => <Icon className={className} d="M12 1v22 M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />;
+        const TrendingUp = ({ className }) => <Icon className={className} d="M23 6l-9.5 9.5-5-5L1 18 M23 6h-7 M23 6v7" />;
+
+        // Sample Data
+        const sampleRestaurants = [
+            {
+                id: 1,
+                name: "Bella Italia",
+                type: "Italian",
+                image: "🍝",
+                deals: [
+                    { id: 101, title: "25% Off Pasta Night", discount: 25, validUntil: "2026-03-01", redeemed: 45, surveyQuestions: 5 }
+                ],
+                surveys: [
+                    { userId: 201, userName: "Sarah M.", rating: 5, responses: ["Excellent", "Very clean", "Outstanding service", "Yes", "Highly recommend"] }
+                ]
+            },
+            {
+                id: 2,
+                name: "Sushi Palace",
+                type: "Japanese",
+                image: "🍣",
+                deals: [
+                    { id: 102, title: "Buy 1 Get 1 Rolls", discount: 50, validUntil: "2026-02-28", redeemed: 67, surveyQuestions: 4 }
+                ],
+                surveys: []
+            },
+            {
+                id: 3,
+                name: "Burger Haven",
+                type: "American",
+                image: "🍔",
+                deals: [
+                    { id: 103, title: "30% Off Any Burger", discount: 30, validUntil: "2026-03-15", redeemed: 89, surveyQuestions: 6 }
+                ],
+                surveys: []
+            }
+        ];
+
+        const App = () => {
+            const [accountType, setAccountType] = useState(null);
+            const [currentView, setCurrentView] = useState('login');
+            const [selectedDeal, setSelectedDeal] = useState(null);
+            const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+            const [userDeals, setUserDeals] = useState([]);
+            const [restaurants, setRestaurants] = useState(sampleRestaurants);
+
+            // Login Screen
+            const LoginScreen = () => (
+                <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center p-4">
+                    <div className="max-w-md w-full">
+                        <div className="text-center mb-8">
+                            <div className="inline-flex items-center justify-center w-20 h-20 bg-orange-500 rounded-full mb-4">
+                                <Utensils className="w-10 h-10 text-white" />
+                            </div>
+                            <h1 className="text-5xl font-bold text-gray-800 mb-2">Forked</h1>
+                            <p className="text-gray-600">Great deals. Great feedback.</p>
+                        </div>
+
+                        <div className="bg-white rounded-2xl shadow-xl p-8 space-y-4">
+                            <h2 className="text-2xl font-semibold text-gray-800 mb-6">Choose Account Type</h2>
+                            
+                            <button
+                                onClick={() => {
+                                    setAccountType('user');
+                                    setCurrentView('dashboard');
+                                }}
+                                className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl p-6 hover:shadow-lg transition-all transform hover:scale-105 flex items-center justify-between"
+                            >
+                                <div className="flex items-center space-x-4">
+                                    <Users className="w-8 h-8" />
+                                    <div className="text-left">
+                                        <div className="font-semibold text-lg">I'm a Diner</div>
+                                        <div className="text-sm text-orange-100">Find great deals at local restaurants</div>
+                                    </div>
+                                </div>
+                                <ChevronRight className="w-6 h-6" />
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    setAccountType('restaurant');
+                                    setSelectedRestaurant(restaurants[0]);
+                                    setCurrentView('dashboard');
+                                }}
+                                className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl p-6 hover:shadow-lg transition-all transform hover:scale-105 flex items-center justify-between"
+                            >
+                                <div className="flex items-center space-x-4">
+                                    <Utensils className="w-8 h-8" />
+                                    <div className="text-left">
+                                        <div className="font-semibold text-lg">I'm a Restaurant</div>
+                                        <div className="text-sm text-purple-100">Create deals and get customer insights</div>
+                                    </div>
+                                </div>
+                                <ChevronRight className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="text-center mt-6 text-sm text-gray-500">
+                            Demo Mode - Select any option to explore
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // User Dashboard
+            const UserDashboard = () => (
+                <div className="min-h-screen bg-gray-50">
+                    <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-6">
+                        <div className="max-w-6xl mx-auto">
+                            <div className="flex items-center justify-between mb-4">
+                                <h1 className="text-3xl font-bold">Welcome back, Alex!</h1>
+                                <button
+                                    onClick={() => {
+                                        setAccountType(null);
+                                        setCurrentView('login');
+                                    }}
+                                    className="text-white hover:text-orange-100 text-sm"
+                                >
+                                    Switch Account
+                                </button>
+                            </div>
+                            <div className="flex items-center space-x-6 text-orange-100">
+                                <div className="flex items-center space-x-2">
+                                    <Award className="w-5 h-5" />
+                                    <span>12 Deals Redeemed</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Star className="w-5 h-5" />
+                                    <span>8 Reviews Given</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="max-w-6xl mx-auto p-6">
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-bold text-gray-800 mb-4">Available Deals Near You</h2>
+                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {restaurants.map(restaurant => 
+                                    restaurant.deals.map(deal => (
+                                        <div key={deal.id} className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow overflow-hidden">
+                                            <div className="p-6">
+                                                <div className="text-5xl mb-3 text-center">{restaurant.image}</div>
+                                                <h3 className="text-xl font-bold text-gray-800 mb-2">{restaurant.name}</h3>
+                                                <div className="flex items-center text-sm text-gray-500 mb-3">
+                                                    <MapPin className="w-4 h-4 mr-1" />
+                                                    <span>{restaurant.type} Cuisine</span>
+                                                </div>
+                                                <div className="bg-orange-50 rounded-lg p-4 mb-4">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-2xl font-bold text-orange-600">{deal.discount}% OFF</span>
+                                                        <Tag className="w-6 h-6 text-orange-500" />
+                                                    </div>
+                                                    <p className="text-gray-700 font-medium">{deal.title}</p>
+                                                </div>
+                                                <div className="flex items-center text-sm text-gray-500 mb-4">
+                                                    <Clock className="w-4 h-4 mr-1" />
+                                                    <span>Valid until {new Date(deal.validUntil).toLocaleDateString()}</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedDeal({ ...deal, restaurant });
+                                                        setCurrentView('survey');
+                                                    }}
+                                                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg py-3 font-semibold hover:shadow-lg transition-all"
+                                                >
+                                                    Redeem Deal
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {userDeals.length > 0 && (
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-800 mb-4">Your Redeemed Deals</h2>
+                                <div className="bg-white rounded-xl shadow-md p-6">
+                                    {userDeals.map((deal, idx) => (
+                                        <div key={idx} className="flex items-center justify-between py-3 border-b last:border-b-0">
+                                            <div className="flex items-center space-x-4">
+                                                <div className="text-3xl">{deal.restaurant.image}</div>
+                                                <div>
+                                                    <div className="font-semibold text-gray-800">{deal.restaurant.name}</div>
+                                                    <div className="text-sm text-gray-500">{deal.title}</div>
+                                                </div>
+                                            </div>
+                                            <div className="text-green-600 font-semibold">Survey Completed ✓</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+
+            // Survey Screen
+            const SurveyScreen = () => {
+                const [responses, setResponses] = useState({});
+                
+                const questions = [
+                    { id: 1, question: "How would you rate your overall experience?", type: "rating" },
+                    { id: 2, question: "How was the cleanliness of the restaurant?", type: "text" },
+                    { id: 3, question: "Rate the quality of the food", type: "rating" },
+                    { id: 4, question: "How was the service?", type: "text" },
+                    { id: 5, question: "Would you recommend us to a friend?", type: "text" }
+                ];
+
+                const handleSubmit = () => {
+                    setUserDeals([...userDeals, selectedDeal]);
+                    setCurrentView('dashboard');
+                };
+
+                return (
+                    <div className="min-h-screen bg-gray-50 p-6">
+                        <div className="max-w-3xl mx-auto">
+                            <button
+                                onClick={() => setCurrentView('dashboard')}
+                                className="text-gray-600 hover:text-gray-800 mb-6 flex items-center"
+                            >
+                                ← Back to Deals
+                            </button>
+
+                            <div className="bg-white rounded-2xl shadow-xl p-8">
+                                <div className="text-center mb-8">
+                                    <div className="text-6xl mb-4">{selectedDeal.restaurant.image}</div>
+                                    <h2 className="text-3xl font-bold text-gray-800 mb-2">{selectedDeal.restaurant.name}</h2>
+                                    <div className="inline-block bg-green-100 text-green-700 px-4 py-2 rounded-full font-semibold">
+                                        {selectedDeal.discount}% Discount Applied!
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-b border-gray-200 py-6 mb-8">
+                                    <p className="text-gray-700 text-center">
+                                        To complete your discount redemption, please answer a few quick questions about your experience.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-6">
+                                    {questions.map(q => (
+                                        <div key={q.id} className="bg-gray-50 rounded-xl p-6">
+                                            <label className="block text-gray-800 font-semibold mb-3">
+                                                {q.id}. {q.question}
+                                            </label>
+                                            {q.type === 'rating' ? (
+                                                <div className="flex space-x-2">
+                                                    {[1, 2, 3, 4, 5].map(rating => (
+                                                        <button
+                                                            key={rating}
+                                                            onClick={() => setResponses({ ...responses, [q.id]: rating })}
+                                                            className={`w-12 h-12 rounded-lg border-2 transition-all ${
+                                                                responses[q.id] === rating
+                                                                    ? 'bg-orange-500 border-orange-500 text-white'
+                                                                    : 'border-gray-300 text-gray-600 hover:border-orange-300'
+                                                            }`}
+                                                        >
+                                                            {rating}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <textarea
+                                                    value={responses[q.id] || ''}
+                                                    onChange={e => setResponses({ ...responses, [q.id]: e.target.value })}
+                                                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                                    rows="3"
+                                                    placeholder="Your answer..."
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={Object.keys(responses).length < questions.length}
+                                    className="w-full mt-8 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl py-4 font-semibold text-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Submit Survey & Confirm Discount
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Restaurant Dashboard
+            const RestaurantDashboard = () => {
+                const totalReviews = selectedRestaurant.surveys.length;
+                const totalRedeemed = selectedRestaurant.deals.reduce((sum, deal) => sum + deal.redeemed, 0);
+                const serviceFee = 2.50;
+                const totalRevenue = totalRedeemed * serviceFee;
+
+                return (
+                    <div className="min-h-screen bg-gray-50">
+                        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6">
+                            <div className="max-w-6xl mx-auto">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center space-x-4">
+                                        <div className="text-5xl">{selectedRestaurant.image}</div>
+                                        <div>
+                                            <h1 className="text-3xl font-bold">{selectedRestaurant.name}</h1>
+                                            <p className="text-purple-200">{selectedRestaurant.type} Restaurant</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setAccountType(null);
+                                            setCurrentView('login');
+                                        }}
+                                        className="text-white hover:text-purple-100 text-sm"
+                                    >
+                                        Switch Account
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="max-w-6xl mx-auto p-6">
+                            <div className="grid md:grid-cols-4 gap-6 mb-8">
+                                <div className="bg-white rounded-xl shadow-md p-6">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <ClipboardList className="w-8 h-8 text-purple-500" />
+                                    </div>
+                                    <div className="text-3xl font-bold text-gray-800">{totalRedeemed}</div>
+                                    <div className="text-sm text-gray-500">Deals Redeemed</div>
+                                </div>
+
+                                <div className="bg-white rounded-xl shadow-md p-6">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <MessageSquare className="w-8 h-8 text-blue-500" />
+                                    </div>
+                                    <div className="text-3xl font-bold text-gray-800">{totalReviews}</div>
+                                    <div className="text-sm text-gray-500">Survey Responses</div>
+                                </div>
+
+                                <div className="bg-white rounded-xl shadow-md p-6">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <DollarSign className="w-8 h-8 text-green-500" />
+                                    </div>
+                                    <div className="text-3xl font-bold text-gray-800">${totalRevenue.toFixed(2)}</div>
+                                    <div className="text-sm text-gray-500">Total Fees Paid</div>
+                                </div>
+
+                                <div className="bg-white rounded-xl shadow-md p-6">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <TrendingUp className="w-8 h-8 text-orange-500" />
+                                    </div>
+                                    <div className="text-3xl font-bold text-gray-800">{selectedRestaurant.deals.length}</div>
+                                    <div className="text-sm text-gray-500">Active Deals</div>
+                                </div>
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-6 mb-8">
+                                <div className="bg-white rounded-xl shadow-md p-6">
+                                    <h3 className="text-xl font-bold text-gray-800 mb-4">Your Active Deals</h3>
+                                    <div className="space-y-4">
+                                        {selectedRestaurant.deals.map(deal => (
+                                            <div key={deal.id} className="border border-gray-200 rounded-lg p-4">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h4 className="font-semibold text-gray-800">{deal.title}</h4>
+                                                    <span className="text-orange-600 font-bold">{deal.discount}% OFF</span>
+                                                </div>
+                                                <div className="flex items-center justify-between text-sm text-gray-500">
+                                                    <span>{deal.redeemed} redeemed</span>
+                                                    <span>{deal.surveyQuestions} survey questions</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button
+                                        onClick={() => setCurrentView('create-deal')}
+                                        className="w-full mt-4 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg py-3 font-semibold hover:shadow-lg transition-all"
+                                    >
+                                        + Create New Deal
+                                    </button>
+                                </div>
+
+                                <div className="bg-white rounded-xl shadow-md p-6">
+                                    <h3 className="text-xl font-bold text-gray-800 mb-4">Recent Survey Responses</h3>
+                                    {selectedRestaurant.surveys.length > 0 ? (
+                                        <div className="space-y-4">
+                                            {selectedRestaurant.surveys.map((survey, idx) => (
+                                                <div key={idx} className="border border-gray-200 rounded-lg p-4">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="font-semibold text-gray-800">{survey.userName}</span>
+                                                        <div className="flex items-center">
+                                                            <Star className="w-4 h-4 text-yellow-500" />
+                                                            <span className="ml-1 text-sm font-semibold">{survey.rating}/5</span>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-sm text-gray-600">{survey.responses[0]}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8 text-gray-500">
+                                            <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                                            <p>No survey responses yet</p>
+                                            <p className="text-sm">Responses will appear as customers redeem deals</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6">
+                                <div className="flex items-start space-x-4">
+                                    <DollarSign className="w-8 h-8 text-green-600 flex-shrink-0" />
+                                    <div>
+                                        <h3 className="text-lg font-bold text-gray-800 mb-2">Service Fee Breakdown</h3>
+                                        <p className="text-gray-700 mb-3">
+                                            You pay ${serviceFee.toFixed(2)} per completed survey response. This helps us maintain the platform and bring quality customers to your restaurant.
+                                        </p>
+                                        <div className="bg-white rounded-lg p-4 inline-block">
+                                            <div className="text-sm text-gray-600 mb-1">Total surveys received: {totalRedeemed}</div>
+                                            <div className="text-xl font-bold text-green-600">Total fees: ${totalRevenue.toFixed(2)}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Create Deal Screen
+            const CreateDealScreen = () => {
+                const [dealTitle, setDealTitle] = useState('');
+                const [discount, setDiscount] = useState(20);
+                const [questions, setQuestions] = useState([
+                    'How would you rate your overall experience?',
+                    'What did you enjoy most about your visit?'
+                ]);
+
+                return (
+                    <div className="min-h-screen bg-gray-50 p-6">
+                        <div className="max-w-4xl mx-auto">
+                            <button
+                                onClick={() => setCurrentView('dashboard')}
+                                className="text-gray-600 hover:text-gray-800 mb-6 flex items-center"
+                            >
+                                ← Back to Dashboard
+                            </button>
+
+                            <div className="bg-white rounded-2xl shadow-xl p-8">
+                                <h2 className="text-3xl font-bold text-gray-800 mb-8">Create New Deal</h2>
+
+                                <div className="space-y-6">
+                                    <div>
+                                        <label className="block text-gray-700 font-semibold mb-2">Deal Title</label>
+                                        <input
+                                            type="text"
+                                            value={dealTitle}
+                                            onChange={e => setDealTitle(e.target.value)}
+                                            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            placeholder="e.g., Happy Hour Special"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-gray-700 font-semibold mb-2">Discount Percentage</label>
+                                        <div className="flex items-center space-x-4">
+                                            <input
+                                                type="range"
+                                                min="5"
+                                                max="75"
+                                                step="5"
+                                                value={discount}
+                                                onChange={e => setDiscount(parseInt(e.target.value))}
+                                                className="flex-1"
+                                            />
+                                            <span className="text-2xl font-bold text-purple-600 w-20">{discount}%</span>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-gray-700 font-semibold mb-2">Survey Questions</label>
+                                        <p className="text-sm text-gray-500 mb-4">Customize what you'd like to ask your customers</p>
+                                        <div className="space-y-3">
+                                            {questions.map((q, idx) => (
+                                                <div key={idx} className="flex items-center space-x-3">
+                                                    <input
+                                                        type="text"
+                                                        value={q}
+                                                        onChange={e => {
+                                                            const newQuestions = [...questions];
+                                                            newQuestions[idx] = e.target.value;
+                                                            setQuestions(newQuestions);
+                                                        }}
+                                                        className="flex-1 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                    />
+                                                    <button
+                                                        onClick={() => setQuestions(questions.filter((_, i) => i !== idx))}
+                                                        className="text-red-500 hover:text-red-700 px-3"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            <button
+                                                onClick={() => setQuestions([...questions, ''])}
+                                                className="text-purple-600 hover:text-purple-700 font-semibold"
+                                            >
+                                                + Add Question
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-purple-50 rounded-lg p-6 border-2 border-purple-200">
+                                        <h3 className="font-semibold text-gray-800 mb-2">Cost Estimate</h3>
+                                        <p className="text-gray-700">
+                                            Service fee: <span className="font-bold">$2.50 per survey completed</span>
+                                        </p>
+                                        <p className="text-sm text-gray-500 mt-2">
+                                            You only pay when customers complete the survey after redeeming your deal.
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        onClick={() => setCurrentView('dashboard')}
+                                        className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl py-4 font-semibold text-lg hover:shadow-lg transition-all"
+                                    >
+                                        Publish Deal
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Main Render
+            if (currentView === 'login') {
+                return <LoginScreen />;
+            }
+
+            if (accountType === 'user') {
+                if (currentView === 'survey') {
+                    return <SurveyScreen />;
+                }
+                return <UserDashboard />;
+            }
+
+            if (accountType === 'restaurant') {
+                if (currentView === 'create-deal') {
+                    return <CreateDealScreen />;
+                }
+                return <RestaurantDashboard />;
+            }
+
+            return <LoginScreen />;
+        };
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
